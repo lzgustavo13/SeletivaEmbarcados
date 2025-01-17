@@ -1,0 +1,102 @@
+#include "MPU6050.h"
+
+MPU6050::MPU6050(PinName sda, PinName scl) : connection(sda, scl) {
+
+    this->setSleepMode(false);
+    currentGyroRange = 0;
+    angZ = 0.0f; //angulo em z
+    intTimer.start();
+
+}
+
+//--------------------------------------------------
+//-------------------General------------------------
+//--------------------------------------------------
+
+void MPU6050::write(char address, char data) {
+    char temp[2];
+    temp[0]=address;
+    temp[1]=data;
+    
+    connection.write(MPU6050_ADDRESS * 2,temp,2);
+}
+
+char MPU6050::read(char address) {
+    char retval;
+    connection.write(MPU6050_ADDRESS * 2, &address, 1, true);
+    connection.read(MPU6050_ADDRESS * 2, &retval, 1);
+    return retval;
+}
+
+void MPU6050::read(char address, char *data, int length) {
+    connection.write(MPU6050_ADDRESS * 2, &address, 1, true);
+    connection.read(MPU6050_ADDRESS * 2, data, length);
+}
+
+void MPU6050::setSleepMode(bool state) {
+    char temp = this->read(MPU6050_PWR_MGMT_1_REG);
+    if (state) {
+        temp |= (1 << MPU6050_SLP_BIT); // ativa modo de repouso
+    } else {
+        temp &= ~(1 << MPU6050_SLP_BIT); // desativa modo de repouso
+    }
+    this->write(MPU6050_PWR_MGMT_1_REG, temp);
+}
+
+bool MPU6050::testConnection( void ) {
+    char temp;
+    temp = this->read(MPU6050_WHO_AM_I_REG);
+    return (temp == (MPU6050_ADDRESS & 0xFE));
+}
+
+//--------------------------------------------------
+//------------------Gyroscope-----------------------
+//-------------------------------------------------- 
+
+void MPU6050::setGyroRange(char range) {
+    currentGyroRange = range;
+    range &= MPU6050_GYRO_CONFIG_MASK; // aplicando a mascara
+    char temp = this->read(MPU6050_GYRO_CONFIG_REG);
+    temp &= ~(MPU6050_GYRO_CONFIG_MASK << MPU6050_GYRO_CONFIG_SHIFT); // limpar bits
+    temp |= (range << MPU6050_GYRO_CONFIG_SHIFT); // novos bits
+    this->write(MPU6050_GYRO_CONFIG_REG, temp);
+}
+
+//otimizado
+void MPU6050::getGyroRaw(int16_t *data) {
+    char rawData[6];
+    read(MPU6050_GYRO_XOUT_H_REG, rawData, 6);
+
+    // convertendo os dados para numeros de 16 bits, atenção ao sinal
+    data[0] = (int16_t)((rawData[0] << 8) | rawData[1]); // X
+    data[1] = (int16_t)((rawData[2] << 8) | rawData[3]); // Y
+    data[2] = (int16_t)((rawData[4] << 8) | rawData[5]); // Z
+}
+
+//implementado
+float MPU6050::change(int16_t raw) {
+    float sensitivity;
+    if(currentGyroRange == MPU6050_GYRO_RANGE_250){
+        sensitivity = 131.0;
+    }else if(currentGyroRange == MPU6050_GYRO_RANGE_500){
+        sensitivity = 65.5;
+    }else if(currentGyroRange == MPU6050_GYRO_RANGE_1000){
+        sensitivity = 32.8;
+    }else{
+        sensitivity = 16.4;
+    }
+    // convertendo para °/s e depois para rad/s, obs: no dataset de testes o valor
+    //ja está em °/s logo modificar essa função caso queira testar com dataset
+    return (raw / sensitivity) * 0.0174533;
+}
+
+//implementado
+void MPU6050::updateAng(float giroZ) {
+    float deltaT = intTimer.read(); // tempo desde ultima leitura
+    intTimer.reset();                  // reset timer
+    angZ += giroZ * deltaT; // integrando velocidade angular em rad/s giroZ
+}
+
+float MPU6050::getAng() {
+    return angZ;
+}
