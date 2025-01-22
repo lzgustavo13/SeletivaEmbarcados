@@ -108,11 +108,21 @@ class MPU6050 {
       */
      void read( char adress, char *data, int length);
 
+     int getGyroRead();
+
+     template <class ToDuration, class T = float>
+        T timerRead(const Timer& timer) {
+        return chrono::duration_cast<chrono::duration<T, typename ToDuration::period>>(timer.elapsed_time()).count();
+        }
+
+     double timerMillisRead(const Timer& timer);
+
      private:
      I2C connection;
      char currentGyroRange;
      float angZ; // deslocamento angular acumulado
      Timer intTimer;     // timer p/ medir intervalo
+     double gyroSample = 3.0; // numero de amostras do giroscopio
 };
 
 #endif
