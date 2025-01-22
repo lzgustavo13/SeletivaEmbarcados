@@ -3,8 +3,10 @@
 
 #define SDA_PIN PB_9
 #define SCL_PIN PB_8
+#define SAMPLE_RATE 10 // ms
 
 MPU6050 mpu(SDA_PIN, SCL_PIN);
+Timer timer; // timer para controlar a taxa de amostragem
 
 int main() {
     // Testa a conexão com o MPU6050
@@ -15,22 +17,23 @@ int main() {
 
     printf("Conexão bem-sucedida com o MPU6050.\n");
 
-    while (true) {
-        int16_t gyroData[3];
-        mpu.setGyroRange(MPU6050_GYRO_RANGE_500); //MPU6050_GYRO_RANGE_500
-        mpu.getGyroRaw(gyroData); // estamos obtendo os dados do giroscopio porem devemos fazer as devidas alterações
-        
-        float giroX = mpu.change(gyroData[0]);
-        float giroY = mpu.change(gyroData[1]);
-        float giroZ = mpu.change(gyroData[2]);
+    while (true){
+        if(timer.elapsed_time().count() >= SAMPLE_RATE * 1000){ //count em microsegundos por isso * 1000
+            timer.reset();
 
-        mpu.updateAng(giroZ);
+            int16_t gyroData[3];
+            mpu.setGyroRange(MPU6050_GYRO_RANGE_500); //MPU6050_GYRO_RANGE_500
+            mpu.getGyroRaw(gyroData); // estamos obtendo os dados do giroscopio porem devemos fazer as devidas alterações
+            
+            float giroX = mpu.change(gyroData[0]);
+            float giroY = mpu.change(gyroData[1]);
+            float giroZ = mpu.change(gyroData[2]);
 
-        float deslocamento = mpu.getAng();
+            mpu.updateAng(giroZ);
+            float deslocamento = mpu.getAng();
 
-        printf("Giro (rad/s) - X: %.3f, Y: %.3f, Z: %.3f\n", giroX, giroY, giroZ);
-        printf("Deslocamento Angular: %.3f\n", deslocamento);
-
-        thread_sleep_for(1000); // Aguarda 1 segundo
+            printf("Giro (rad/s) - X: %.3f, Y: %.3f, Z: %.3f\n", giroX, giroY, giroZ);
+            printf("Deslocamento Angular: %.3f\n", deslocamento);
+        }
     }
 }
