@@ -73,7 +73,19 @@ void MPU6050::getGyroRaw(int16_t *data) {
     data[2] = (int16_t)((rawData[4] << 8) | rawData[5]); // Z
 }
 
+int MPU6050::getGyroRead( void ) {
+     short retval;
+     char data[2];
+     this->read(MPU6050_GYRO_ZOUT_H_REG, data, 2);
+     retval = (data[0]<<8) + data[1];
+     return (int)retval;
+}
+
 //implementado
+double MPU6050::timerMillisRead(const Timer& timer) {
+    return timerRead<chrono::milliseconds>(timer);
+}
+
 float MPU6050::change(int16_t raw) {
     float sensitivity;
     if(currentGyroRange == MPU6050_GYRO_RANGE_250){
@@ -92,9 +104,27 @@ float MPU6050::change(int16_t raw) {
 
 //implementado
 void MPU6050::updateAng(float giroZ) {
-    float deltaT = intTimer.read(); // tempo desde ultima leitura
-    intTimer.reset();                  // reset timer
-    angZ += giroZ * deltaT; // integrando velocidade angular em rad/s giroZ
+    double accumulator = 0.0;
+    for (int i = 0; i < gyroSample; i++) { 
+        double rawValue = getGyroRead();
+        rawValue = change(rawValue);  // converte para rad/s
+        if (fabs(rawValue) >= 0.03) {
+            accumulator += rawValue;
+        }
+    }
+    accumulator /= gyroSample;  // média dos valores
+
+    double gyroElapsedTime = timerRead<chrono::milliseconds>(intTimer);
+    const double elapsedTimeSeconds = gyroElapsedTime * 0.001; // converte ms para s
+    angZ += accumulator * elapsedTimeSeconds;
+
+    intTimer.reset(); // reseta o timer
+    
+    if (angZ > M_PI) { // mantem o angulo limitado entre -pi e pi
+        angZ -= 2 * M_PI;
+    } else if (angZ < -M_PI) {
+        angZ += 2 * M_PI;
+    }
 }
 
 float MPU6050::getAng() {
