@@ -10,10 +10,16 @@ If it is half of what you expected, and you still are on the correct planet, you
 #include "mbed.h"
 
 /**
+ * Pins
+ */
+#define SDA_PIN PB_9
+#define SCL_PIN PB_8
+
+/**
  * Defines
  */
 #ifndef MPU6050_ADDRESS
-    #define MPU6050_ADDRESS             0x69 // address pin low (GND), default for InvenSense evaluation board
+    #define MPU6050_ADDRESS             0x68 
 #endif
 /**
  * Registers
@@ -39,6 +45,9 @@ If it is half of what you expected, and you still are on the correct planet, you
 #define MPU6050_GYRO_RANGE_500      1
 #define MPU6050_GYRO_RANGE_1000     2
 #define MPU6050_GYRO_RANGE_2000     3
+
+#define SAMPLE_RATE 5 // ms
+#define SAMPLE_OFFSET 1000 // quantidade de amostras para média do offset
 
 /** MPU6050 IMU library.
  */
@@ -108,7 +117,7 @@ class MPU6050 {
       */
      void read( char adress, char *data, int length);
 
-     int getGyroRead();
+     int getGyroZ();
 
      template <class ToDuration, class T = float>
         T timerRead(const Timer& timer) {
@@ -117,12 +126,17 @@ class MPU6050 {
 
      double timerMillisRead(const Timer& timer);
 
+     void calibrateOffset(int samples);
+
+     float filtroPassaBaixas(float entrada, float alpha);
+
      private:
      I2C connection;
      char currentGyroRange;
      float angZ; // deslocamento angular acumulado
      Timer intTimer;     // timer p/ medir intervalo
      double gyroSample = 3.0; // numero de amostras do giroscopio
+     int16_t offsetX = 0, offsetY = 0, offsetZ = 0; // offset do giroscopio
 };
 
 #endif
