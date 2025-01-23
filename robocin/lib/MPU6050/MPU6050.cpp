@@ -68,12 +68,12 @@ void MPU6050::getGyroRaw(int16_t *data) {
     read(MPU6050_GYRO_XOUT_H_REG, rawData, 6);
 
     // convertendo os dados para numeros de 16 bits, atenção ao sinal
-    data[0] = (int16_t)((rawData[0] << 8) | rawData[1]); // X
-    data[1] = (int16_t)((rawData[2] << 8) | rawData[3]); // Y
-    data[2] = (int16_t)((rawData[4] << 8) | rawData[5]); // Z
+    data[0] = (int16_t)((rawData[0] << 8) | rawData[1]) - offsetX; // X
+    data[1] = (int16_t)((rawData[2] << 8) | rawData[3]) - offsetY; // Y
+    data[2] = (int16_t)((rawData[4] << 8) | rawData[5]) - offsetZ; // Z
 }
 
-int MPU6050::getGyroRead( void ) {
+int MPU6050::getGyroZ( void ) {
      short retval;
      char data[2];
      this->read(MPU6050_GYRO_ZOUT_H_REG, data, 2);
@@ -106,7 +106,7 @@ float MPU6050::change(int16_t raw) {
 void MPU6050::updateAng(float giroZ) {
     double accumulator = 0.0;
     for (int i = 0; i < gyroSample; i++) { 
-        double rawValue = getGyroRead();
+        double rawValue = getGyroZ();
         rawValue = change(rawValue);  // converte para rad/s
         if (fabs(rawValue) >= 0.03) {
             accumulator += rawValue;
@@ -129,4 +129,29 @@ void MPU6050::updateAng(float giroZ) {
 
 float MPU6050::getAng() {
     return angZ;
+}
+
+float MPU6050::filtroPassaBaixas(float entrada, float alpha) {
+    static float saida = 0.0f; 
+    saida = alpha * entrada + (1 - alpha) * saida; // aplicando o filtro
+    return saida; 
+}
+
+void MPU6050::calibrateOffset(int samples) {
+    int32_t sumX = 0, sumY = 0, sumZ = 0; //int32 para aumentar a precisão devido a soma de muitos valores
+
+    for (int i = 0; i < samples; i++) {
+        int16_t rawData[3]; 
+        getGyroRaw(rawData); // obtendo os dados brutos
+
+        sumX += rawData[0]; 
+        sumY += rawData[1];
+        sumZ += rawData[2];
+
+        ThisThread::sleep_for(5ms); // aguarda entre as leituras
+    }
+
+    offsetX = sumX / samples;
+    offsetY = sumY / samples;
+    offsetZ = sumZ / samples; 
 }
