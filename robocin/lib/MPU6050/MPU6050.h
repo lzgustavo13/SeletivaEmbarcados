@@ -8,7 +8,7 @@ If it is half of what you expected, and you still are on the correct planet, you
  * Includes
  */
 #include "mbed.h"
-
+#include <cmath>
 /**
  * Pins
  */
