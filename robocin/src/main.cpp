@@ -13,14 +13,17 @@ int main() {
         return -1;
     }
     printf("Conexão bem-sucedida com o MPU6050.\n");
+
     mpu.calibrateOffset(SAMPLE_OFFSET); // calibra o offset do giroscópio
+    mpu.setGyroRange(MPU6050_GYRO_RANGE_2000); //MPU6050_GYRO_RANGE_2000
+
+    timer.start();
 
     while (true){
         if(timer.elapsed_time().count() >= SAMPLE_RATE * 1000){ //count em microsegundos por isso * 1000
             timer.reset();
 
             int16_t gyroData[3];
-            mpu.setGyroRange(MPU6050_GYRO_RANGE_500); //MPU6050_GYRO_RANGE_500
             mpu.getGyroRaw(gyroData); // estamos obtendo os dados do giroscopio porem devemos fazer as devidas alterações
             
             float giroX = mpu.change(gyroData[0]); // X
