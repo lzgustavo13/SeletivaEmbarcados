@@ -104,19 +104,12 @@ float MPU6050::change(int16_t raw) {
 
 //implementado
 void MPU6050::updateAng(float giroZ) {
-    double accumulator = 0.0;
-    for (int i = 0; i < gyroSample; i++) { 
-        double rawValue = getGyroZ();
-        rawValue = change(rawValue);  // converte para rad/s
-        if (fabs(rawValue) >= 0.03) {
-            accumulator += rawValue;
-        }
-    }
-    accumulator /= gyroSample;  // média dos valores
-
     double gyroElapsedTime = timerRead<chrono::milliseconds>(intTimer);
     const double elapsedTimeSeconds = gyroElapsedTime * 0.001; // converte ms para s
-    angZ += accumulator * elapsedTimeSeconds;
+    
+    if(fabs(giroZ) >= 0.03){
+        angZ += giroZ * elapsedTimeSeconds;
+    }
 
     intTimer.reset(); // reseta o timer
     
